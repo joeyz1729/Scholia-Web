@@ -1,0 +1,40 @@
+name: Deploy Scholia public website
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+concurrency:
+  group: scholia-public-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Validate public package and repository boundary
+        run: |
+          python3 ci/check.py
+      - name: Publish validated release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="web-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" site.tar.gz --target "$GITHUB_SHA" --title "Scholia ${GITHUB_SHA:0:7}" --notes "Validated public website. No authoring sources or editorial records."
+      - name: Verify production activation
+        run: |
+          python3 - <<'PYVERIFY'
+          import json,time,urllib.request
+          expected=json.load(open('release/release.json'))['revision']
+          for attempt in range(90):
+              try:
+                  with urllib.request.urlopen('https://scholia.joeyz.top/release.json',timeout=15) as r:
+                      actual=json.load(r)['revision']
+                  if actual==expected:
+                      print('Production revision verified:',expected)
+                      break
+              except Exception as e: print(type(e).__name__)
+              time.sleep(5)
+          else: raise SystemExit('Server did not activate release; inspect scholia-web-pull.service')
+          PYVERIFY
