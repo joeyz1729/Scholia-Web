@@ -1,7 +1,7 @@
 import io, json, tarfile, tempfile, shutil
 from pathlib import Path
 from public_release import inspect, allowed
-allowed_repo={'site.tar.gz','README.md','.github/workflows/deploy.yml','ci/check.py','ci/public_release.py'}
+allowed_repo={'.gitignore','site.tar.gz','README.md','.github/workflows/deploy.yml','ci/check.py','ci/public_release.py'}
 import subprocess
 tracked=set(subprocess.check_output(['git','ls-files'],text=True).splitlines())
 if tracked != allowed_repo: raise SystemExit('Unexpected repository files: '+str(tracked ^ allowed_repo))
